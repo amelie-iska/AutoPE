@@ -1,3 +1,3 @@
 # AutoPE
 
-Code will release in 3 months.
+Code will release in 2 months.
