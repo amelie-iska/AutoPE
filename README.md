@@ -17,10 +17,6 @@ AutoPE uniquely integrates:
 git clone https://github.com/tsynbio/AutoPE.git
 cd AutoPE
 
-# Install dependencies
-pip install -r requirements.txt
-```
-
 ## Key Dependencies
 
 - PyTorch
@@ -34,34 +30,14 @@ pip install -r requirements.txt
 
 ### 1. Classification Tasks
 
-```python
-from classification import main_sweet
-
-# Configure your task
-config = {
-    'save_path': './results', 
-    'cpu_per_trial': '4',
-    'gpus_per_trial': '1',
-    'num_samples': 20,
-    'lr': tune.loguniform(1e-6, 1e-3),
-    'dropout': tune.uniform(0.001, 0.3),
-    'num_epochs': 30,
-    'batch_size': tune.choice([2,4]),
-    'accumulation_steps': 4
-}
-
-# Run classification
-main_sweet()
-```
+1. Upload a file;
+2. Enter similar content: 'Execute classification task, read uploaded file, analyze sequence AAAAAA/pdb with id 1asc, column A is data, column B is label, set lr to 0.01, dropout to 0.2'
 
 ### 2. Regression Tasks
 
-```python
-from regression import main
+1. Upload a file;
+2. Enter similar content: 'Execute regression task, read uploaded file, analyze sequence AAAAAA/pdb with id 1asc, column A is data, column B is label, set lr to 0.01, dropout to 0.2'
 
-# Run regression with custom parameters
-main(num_samples=5, max_num_epochs=10, gpus_per_trial=0.3)
-```
 
 ## Model Architecture
 
