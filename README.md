@@ -108,9 +108,13 @@ We welcome contributions! Please feel free to submit a Pull Request.
 If you use AutoPE in your research, please cite:
 
 ```bibtex
-@article{autope2024,
-  title={AutoProteinEngine: A Large Language Model Driven Agent Framework for Multimodal AutoML in Protein Engineering},
-  author={Liu, Yungeng and Chen, Zan and Zhao, Xinqing and Wang, Yu Guang and Shen, Yiqing},
-  year={2024}
+@misc{liu2024autoproteinenginelargelanguagemodel,
+      title={AutoProteinEngine: A Large Language Model Driven Agent Framework for Multimodal AutoML in Protein Engineering}, 
+      author={Yungeng Liu and Zan Chen and Yu Guang Wang and Yiqing Shen},
+      year={2024},
+      eprint={2411.04440},
+      archivePrefix={arXiv},
+      primaryClass={q-bio.QM},
+      url={https://arxiv.org/abs/2411.04440}, 
 }
 ```
