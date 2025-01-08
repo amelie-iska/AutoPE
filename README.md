@@ -1,9 +1,6 @@
-我来帮您编写一个完整的README文档：
-
-```markdown
 # AutoProteinEngine (AutoPE)
 
-AutoProteinEngine (AutoPE) is an innovative framework that leverages large language models (LLMs) for multimodal automated machine learning (AutoML) in protein engineering tasks. It enables biologists without deep learning backgrounds to interact with deep learning models using natural language, significantly lowering the entry barrier for protein engineering tasks.
+AutoProteinEngine (AutoPE) is an innovative framework that leverages large language models (LLMs) for multimodal automated machine learning (AutoML) in protein engineering tasks. It enables biologists without deep learning backgrounds to interact with deep learning models using natural language, significantly lowering the entry barrier for protein engineering tasks. Our paper is at https://arxiv.org/pdf/2411.04440.
 
 ## Overview
 
@@ -140,10 +137,3 @@ If you use AutoPE in your research, please cite:
   year={2024}
 }
 ```
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-```
-
-这个README包含了项目的主要组成部分、使用方法、实验结果等关键信息。您觉得需要补充或修改哪些内容吗？
