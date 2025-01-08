@@ -1,8 +1,9 @@
 # train_model.py
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3,4,5,6,7"
-os.environ["RAY_TEMP_DIR"] = "/home/netzone22/mydisk"  # 修改为您的路径
+os.environ["RAY_TEMP_DIR"] = ""  # 修改为您的路径
 
+import ESM3
 import json
 import torch
 import torch.nn as nn
@@ -24,11 +25,11 @@ from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 import ray
 from ray.tune.schedulers import ASHAScheduler
 from ray import tune, train
-from model import Model
+from .model import Model, esm2_model_mapping
 from ray.tune import CLIReporter
 
 # 初始化 Ray
-ray.init(ignore_reinit_error=True, _temp_dir="/home/netzone22/mydisk")  # 修改为您的路径
+ray.init(ignore_reinit_error=True, _temp_dir="your path")  # 修改为您的路径
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
 
@@ -46,10 +47,10 @@ def find_best_threshold(y_true, y_pred_proba):
 
 def load_data(config):
     # df = pd.read_excel(filepath)
-    df = pd.read_excel(config['save_path'])
+    df = pd.read_excel(config['file_path'])
 
-    sequences = df['Mutations sequence'].tolist()
-    labels = df['value'].apply(lambda x: 1 if x < 0.5 else 0).tolist()
+    sequences = df[config['data_columns']].tolist()
+    labels = df[config['label_column']].apply(lambda x: 1 if x < 0.5 else 0).tolist()
 
     X_train, X_test, y_train, y_test = train_test_split(
         sequences, labels, test_size=0.4, random_state=2, stratify=labels
@@ -73,119 +74,40 @@ class SequenceDataset(Dataset):
         _, _, batch_tokens = self.batch_converter(data)
         return batch_tokens.squeeze(0), label
 
-# def load_data(config):
-#     """
-#     加载并预处理数据
-#     """
-#     # 读取数据
-#     df = pd.read_excel(config['save_path'])
-
-#     # 分离甜和不甜的数据
-#     sweet_df = df[df['Sweetness'] == '甜']
-#     not_sweet_df = df[df['Sweetness'] == '不甜']
-
-#     print(f"原始甜的样本数量：{len(sweet_df)}, 原始不甜的样本数量：{len(not_sweet_df)}")
-
-#     # 上采样甜的样本
-#     sweet_df_upsampled = sweet_df.sample(n=len(not_sweet_df), replace=True, random_state=42)
-
-#     # 合并并打乱数据集
-#     df_balanced = pd.concat([sweet_df_upsampled, not_sweet_df]).sample(frac=1, random_state=42).reset_index(drop=True)
-
-#     # 提取序列和标签
-#     sequences = df_balanced['Mutations sequence'].tolist()
-#     labels = df_balanced['Sweetness'].apply(lambda x: 1 if x == '甜' else 0).tolist()
-
-#     # 检查平衡后的标签分布
-#     label_counts = pd.Series(labels).value_counts()
-#     print("平衡后的标签分布：")
-#     print(label_counts)
-
-#     return sequences, labels
     
 def train_model(config, checkpoint_dir=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_path = '/home/netzone22/mydisk/yungeng/esm_models/esm2_t33_650M_UR50D.pt'  # 修改为您的模型路径
-    pretrained_model, alphabet = esm.pretrained.load_model_and_alphabet_local(model_path)
+    model_path = config['model_name']
+    if 'esm2' in model_path:
+        pretrained_model, alphabet = esm.pretrained.load_model_and_alphabet(model_path)
+        embedding_dim, layers = esm2_model_mapping[model_path]['embedding_dim'],esm2_model_mapping[model_path]['layers']
+    else:
+        pretrained_model, alphabet = ESM3.from_pretrained("esm3_sm_open_v1")
     pretrained_model.eval()
     batch_converter = alphabet.get_batch_converter()
     pretrained_model = pretrained_model.to(device)
 
-    model = Model(pretrained_model=pretrained_model, embedding_dim=1280, output_dim=1, self_attention_layers=True, repr_layers=33, dropout=float(config["dropout"]))
+    # embedding_dim, layers = esm2_model_mapping[model_path]['embedding_dim'],esm2_model_mapping[model_path]['layers']
+
+    model = Model(pretrained_model=pretrained_model, embedding_dim=embedding_dim, output_dim=1, self_attention_layers=True, repr_layers=layers, dropout=float(config["dropout"]))
     model = model.to(device)
     model.train()
 
     # sequences, labels = load_data(config)
     X_train, y_train, X_val, y_val = load_data(config)
-    # 划分训练集和验证集
-    # X_train, X_val, y_train, y_val = train_test_split(
-    #     sequences, labels, test_size=0.2, random_state=42, stratify=labels
-    # )
 
-    # 读取数据
-    # df = pd.read_excel(config['save_path'])
-
-    # # 分离甜和不甜的数据
-    # sweet_df = df[df['Sweetness'] == '甜']
-    # not_sweet_df = df[df['Sweetness'] == '不甜']
-
-    # # 计算样本数量
-    # num_sweet = len(sweet_df)
-    # num_not_sweet = len(not_sweet_df)
-    # print(f"甜的样本数量：{num_sweet}, 不甜的样本数量：{num_not_sweet}")
-
-    # # 平衡数据集
-    # if num_sweet > num_not_sweet:
-    #     # 下采样甜的样本
-    #     sweet_df_balanced = sweet_df.sample(n=num_not_sweet, random_state=42)
-    #     not_sweet_df_balanced = not_sweet_df
-    # elif num_not_sweet > num_sweet:
-    #     # 下采样不甜的样本
-    #     not_sweet_df_balanced = not_sweet_df.sample(n=num_sweet, random_state=42)
-    #     sweet_df_balanced = sweet_df
-    # else:
-    #     # 样本数量已经平衡
-    #     sweet_df_balanced = sweet_df
-    #     not_sweet_df_balanced = not_sweet_df
-
-    # # 合并平衡后的数据集
-    # df_balanced = pd.concat([sweet_df_balanced, not_sweet_df_balanced]).sample(frac=1, random_state=42).reset_index(drop=True)
-
-    # # 提取序列和标签
-    # sequences = df_balanced['Mutations sequence'].tolist()
-    # labels_text = df_balanced['Sweetness'].tolist()
-    # labels = np.array([0 if label == '不甜' else 1 for label in labels_text], dtype=np.float32)
-
-    # # 检查平衡后的标签分布
-    # label_counts = np.bincount(labels.astype(int))
-    # print("平衡后的标签分布：", label_counts)
-
-    # # 将数据集划分为训练集和验证集
-    # train_indices, val_indices = train_test_split(
-    #     range(len(sequences)),
-    #     test_size=0.4,
-    #     random_state=151,
-    #     stratify=labels
-    # )
-    # X_train = [sequences[i] for i in train_indices]
-    # y_train = labels[train_indices]
-    # X_val = [sequences[i] for i in val_indices]
-    # y_val = labels[val_indices]
-
-    # 创建数据集
     train_dataset = SequenceDataset(X_train, y_train, batch_converter)
     val_dataset = SequenceDataset(X_val, y_val, batch_converter)
 
-    # 定义损失函数、优化器和调度器
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=float(config["lr"]))
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
 
-    batch_size = int(config.get("batch_size", 8))
+    batch_size = int(config.get("batch_size"))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=True, num_workers=4)
 
-    accumulation_steps = int(config.get("accumulation_steps", 1))  # 梯度累积步数
+    accumulation_steps = int(config.get("accumulation_steps"))  # 梯度累积步数
 
     # 初始化
     best_val_f1 = 0.0
@@ -266,16 +188,11 @@ def train_model(config, checkpoint_dir=None):
         print(f"Predictions distribution: {np.bincount(all_y_pred)}")
         print(f"True labels distribution: {np.bincount(np.array(all_y_true, dtype=int))}")
 
-        # 打印混淆矩阵
         cm = confusion_matrix(all_y_true, all_y_pred)
         print('Confusion Matrix:')
         print(cm)
         print("-" * 50)
-        #将np.array格式的all_y_pred_proba转为float
-        # all_y_pred_proba = float(all_y_pred_proba)
-        
 
-        # 保存最佳模型
         if f1 > best_val_f1:
             best_val_f1 = f1
             best_epoch = epoch + 1
@@ -315,29 +232,13 @@ def train_model(config, checkpoint_dir=None):
             })
     print(f"Best F1 Score: {best_val_f1:.4f} at epoch {best_epoch}")
 
-def main_sweet():
-    config = {
-        'save_path': '/home/netzone22/mydisk/yungeng/ray/突变库数据1.03_with_mutated_sequences.xlsx',  # 修改为您的数据路径
-        'cpu_per_trial': '4',
-        'gpus_per_trial': '1',
-        'num_samples': 20,
-        'lr': tune.loguniform(1e-6, 1e-3),
-        'dropout': tune.uniform(0.001, 0.3),
-        'num_epochs': 30,
-        'batch_size': tune.choice([2,4]),
-        'accumulation_steps': 4
-    }
-
-    # reporter = CLIReporter(
-    #     metric_columns={
-    #         "loss": ".4f",  # 损失值显示4位小数
-    #         "accuracy": ".3f",  # 准确率显示3位小数
-    #         "lr":".3f",
-    #         "dropout":".3f"
-    #     }
-    # )
-    # reporter = CLIReporter(
-    #     metric_columns=["loss", "accuracy", "training_iteration"])
+def main_sweet(config, num_samples=10, max_num_epochs=10, gpus_per_trial=1):
+    if config['lr'] is None:
+        config['lr'] = tune.loguniform(1e-6, 1e-3)
+    if config['dropout'] is None:
+        config['dropout'] = tune.uniform(0.001, 0.3)
+    if config['num_epochs'] is None:
+        config['num_epochs'] = 30
 
     scheduler = ASHAScheduler(
         metric="f1",
@@ -354,7 +255,7 @@ def main_sweet():
         num_samples=int(config['num_samples']),
         scheduler=scheduler,
         # progress_reporter=reporter,
-        storage_path='/home/netzone22/mydisk'  # 修改为您的路径
+        # storage_path='./'  #
     )
 
     best_trial = result.get_best_trial("f1", "max", "last")
@@ -372,17 +273,6 @@ def main_sweet():
     plt.savefig('./roc_curve_classification_ray.png')
     plt.close()
 
-    # plt.figure()
-    # plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (area)')
-    # plt.plot([0, 1], [0, 1], color='navy', lw=1, linestyle='--')
-    # plt.xlabel('False Positive Rate')
-    # plt.ylabel('True Positive Rate')
-    # plt.title('ROC Curve (Epoch 0)')
-    # plt.legend(loc="lower right")
-    # plt.savefig('./pr_fig/zero_shot_classification/roc_curve_epoch_zero_shot_classification_ray1.png')
-    # plt.close()
-
-    # precision_curve, recall_curve, _ = precision_recall_curve(y_test, test_predictions)
     plt.figure()
     plt.plot(best_trial.last_result['recall_curve'] , best_trial.last_result['precision_curve'], color='red', lw=2, label=f'PR curve (area = {best_trial.last_result["pr_auc"]:.2f})')
     plt.xlabel('Recall')
@@ -392,13 +282,9 @@ def main_sweet():
     plt.savefig('./pr_curve_classification_ray.png')
     plt.close()
 
-    # print(type(best_trial.last_result['y_true']))
-    # print(type(best_trial.last_result['y_pred']))
-    # print(type(best_trial.last_result['y_pred_proba']))
-
     with open(f'./result_automl_classification_ray_woHPO2.json', 'w') as f:
         json.dump(best_trial.last_result, f)
 
 
-if __name__ == "__main__":
-    main_sweet()
+# if __name__ == "__main__":
+# main_sweet()

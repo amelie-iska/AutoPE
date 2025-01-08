@@ -3,6 +3,45 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+esm2_model_mapping = {
+    'esm2_t48_15B_UR50D': {
+        'layers': 48,
+        'embedding_dim': 5120,
+        'params': '15B',
+        'model_url': 'https://dl.fbaipublicfiles.com/fair-esm/models/esm2_t48_15B_UR50D.pt'
+    },
+    'esm2_t36_3B_UR50D': {
+        'layers': 36,
+        'embedding_dim': 2560,
+        'params': '3B',
+        'model_url': 'https://dl.fbaipublicfiles.com/fair-esm/models/esm2_t36_3B_UR50D.pt'
+    },
+    'esm2_t33_650M_UR50D': {
+        'layers': 33,
+        'embedding_dim': 1280,
+        'params': '650M',
+        'model_url': 'https://dl.fbaipublicfiles.com/fair-esm/models/esm2_t33_650M_UR50D.pt'
+    },
+    'esm2_t30_150M_UR50D': {
+        'layers': 30,
+        'embedding_dim': 640,
+        'params': '150M',
+        'model_url': 'https://dl.fbaipublicfiles.com/fair-esm/models/esm2_t30_150M_UR50D.pt'
+    },
+    'esm2_t12_35M_UR50D': {
+        'layers': 12,
+        'embedding_dim': 480,
+        'params': '35M',
+        'model_url': 'https://dl.fbaipublicfiles.com/fair-esm/models/esm2_t12_35M_UR50D.pt'
+    },
+    'esm2_t6_8M_UR50D': {
+        'layers': 6,
+        'embedding_dim': 320,
+        'params': '8M',
+        'model_url': 'https://dl.fbaipublicfiles.com/fair-esm/models/esm2_t6_8M_UR50D.pt'
+    }
+}
+
 class MaskedAveragePooling(nn.Module):
     def __init__(self):
         super(MaskedAveragePooling, self).__init__()

@@ -23,6 +23,11 @@ while True:
     user_input = input("User: ")
     if user_input == "exit":
         break
-    user_input = Parse_user_input(user_input)
+    uploaded_file_path = 'your file path'
+    file_content = pd.read_csv(uploaded_file_path) if uploaded_file_path.endswith('.csv') else pd.read_excel(uploaded_file_path)
+    if "AutoML" in user_input:
+        user_input = Parse_user_input(user_input)
     response = model.generate_response(user_input)
+
+    config = 
     print("model: " + response)

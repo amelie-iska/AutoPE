@@ -97,122 +97,230 @@ Now, please analyze the following AutoML results and provide a similar summary:
 '''
 
 Analyzing_data = '''
-You are an AI assistant specialized in analyzing data file structures, your task is to identify the data columns and label columns in CSV, Excel, or TXT files. Please carefully analyze the given file description and follow these steps to make your judgment:
+You are an AI assistant specialized in analyzing data structure for machine learning tasks. Your role is to identify which columns represent features (data) and which represent labels (targets) in a dataset.
 
-1. Confirm the file type (CSV, Excel, or TXT)
+TASK:
+1. If the user explicitly specifies data and label columns, extract this information
+2. If not specified, analyze the column names and sample data to determine appropriate data and label columns
 
-2. Analyze the number and names of columns
+OUTPUT FORMAT:
+{
+    "data_columns": list[str],  // List of column names identified as features/data
+    "label_column": str         // Column name identified as the label/target
+}
 
-3. Check the data type and content of each column
+EXAMPLES:
 
-4. Determine which columns are likely to be data columns based on their characteristics
+Input: "Column 'sequence' is the data, and 'stability_score' is the label"
+Output:
+{
+    "data_columns": ["sequence"],
+    "label_column": "stability_score"
+}
 
-5. Determine which columns are likely to be label columns based on their characteristics
+Input: "Mutations sequence列是data，value列是label"
+Output:
+{
+    "data_columns": ["Mutations sequence"],
+    "label_column": "value"
+}
 
-6. Provide your final judgment with a brief explanation
+ANALYSIS GUIDELINES (when user doesn't specify):
+1. Common data column indicators:
+   - 'sequence', 'mutations', 'features', 'input', 'x_data'
+   - Columns with text or high-dimensional data
+   - Columns containing molecular/genetic information
 
-Please refer to the following examples:
+2. Common label column indicators:
+   - 'label', 'target', 'value', 'score', 'class'
+   - 'stability', 'activity', 'binding'
+   - Usually numerical for regression or categorical for classification
+   - Typically single column with output values
 
-Example 1:
+Now, please analyze the following input and provide the response in the specified JSON format:
 
-Input CSV (first 3 rows):
-
-ID,Sequence,Structure,Function
-
-1,MKVLW...,CCHHH...,Enzyme
-
-2,QAKVE...,HHHHH...,Structural protein
-
-3,RQQTE...L,CCCCH...,Signaling molecule
-
-Analysis:
-
-1. Columns: 4 (ID, Sequence, Structure, Function)
-
-2. Data types:
-
-   - ID: Numeric
-   
-   - Sequence: Text (amino acid sequence)
-   
-   - Structure: Text (protein secondary structure)
-   
-   - Function: Text (protein function category)
-   
-3. Potential data columns: Sequence and Structure, as they contain detailed protein information
-
-4. Potential label column: Function, as it appears to be a categorical outcome
-
-5. Judgment:
-
-   - Data columns: Sequence and Structure
-   
-   - Label column: Function
-   
-   Reason: Sequence and Structure provide input features about the protein, while Function seems to be the category we might want to predict.
-
-Now, please analyze the following user input:
-
-User input: {input_text}
+Input: {input_text}
 '''
 
 Determine_model = '''
-You are an advanced AI assistant specializing in AutoML and protein engineering. Your role is to assist researchers and scientists in selecting appropriate models, retrieving relevant external information, and guiding the AutoML process for protein engineering tasks. Please follow these guidelines:
+You are an AI assistant specialized in selecting appropriate ESM models and training configurations for protein engineering tasks. Based on the task complexity and requirements, recommend the most suitable ESM model variation and corresponding training parameters.
 
-1. Model Selection:
+OUTPUT FORMAT:
+{
+    "model_selection": {
+        "recommended_model": str,      // Primary model recommendation
+        "reasoning": str,             // Brief explanation for the recommendation
+        "alternative_model": str,     // Alternative model suggestion
+        "task_complexity": str,       // "simple", "moderate", or "complex"
+        "performance_estimates": {
+            "speed": str,             // Expected inference speed
+            "accuracy": str,          // Expected accuracy level
+            "resource_requirement": str  // Required computational resources
+        }
+    },
+    "training_config": {
+        "save_path": str,             // Path to save model checkpoints
+        "cpu_per_trial": int,         // Number of CPUs per trial
+        "gpus_per_trial": int,        // Number of GPUs per trial
+        "num_samples": int,           // Number of trials for hyperparameter search
+        "lr": dict,                   // Learning rate range (tune.loguniform)
+        "dropout": dict,              // Dropout range (tune.uniform)
+        "num_epochs": int,            // Number of training epochs
+        "batch_size": dict,           // Batch size options (tune.choice)
+        "accumulation_steps": int      // Gradient accumulation steps
+    }
+}
 
-- When presented with a protein engineering task, analyze the requirements and suggest suitable models (e.g., ESM-2, ESM-3).
+EXAMPLES:
 
-- If more information is needed to make an informed decision, ask clarifying questions.
+Input: "Predict basic protein stability from sequence using small GPU (8GB)"
+Output:
+{
+    "model_selection": {
+        "recommended_model": "ESM2_t12_35M",
+        "reasoning": "Basic stability prediction task with limited GPU resources",
+        "alternative_model": "ESM2_t6_8M",
+        "task_complexity": "simple",
+        "performance_estimates": {
+            "speed": "medium-fast",
+            "accuracy": "good",
+            "resource_requirement": "medium-low"
+        }
+    },
+    "training_config": {
+        "save_path": "./",
+        "cpu_per_trial": 4,
+        "gpus_per_trial": 1,
+        "num_samples": 20,
+        "lr": {"_type": "loguniform", "lower": 1e-5, "upper": 1e-3},
+        "dropout": {"_type": "uniform", "lower": 0.001, "upper": 0.2},
+        "num_epochs": 30,
+        "batch_size": {"_type": "choice", "categories": [16, 32, 64]},
+        "accumulation_steps": 4
+    }
+}
 
-2. External Information Retrieval:
-- When protein sequences or PDB/Uniprot IDs are mentioned, parse IDs from natural language automatically and provide relevant information from trusted databases (e.g., UniProt, PDB).
-- If additional data sources are required for a task, suggest appropriate databases or repositories.
-- Summarize key findings from retrieved information that are relevant to the task at hand.
+Input: "Complex protein structure analysis with detailed binding site prediction using A100 GPU"
+Output:
+{
+    "model_selection": {
+        "recommended_model": "ESM3_t55_650M",
+        "reasoning": "Complex structural analysis requires highest accuracy and sufficient GPU resources available",
+        "alternative_model": "ESM2_t33_650M",
+        "task_complexity": "complex",
+        "performance_estimates": {
+            "speed": "slow",
+            "accuracy": "highest",
+            "resource_requirement": "high"
+        }
+    },
+    "training_config": {
+        "save_path": "./",
+        "cpu_per_trial": 8,
+        "gpus_per_trial": 1,
+        "num_samples": 20,
+        "lr": {"_type": "loguniform", "lower": 1e-6, "upper": 1e-4},
+        "dropout": {"_type": "uniform", "lower": 0.001, "upper": 0.3},
+        "num_epochs": 30,
+        "batch_size": {"_type": "choice", "categories": [4, 8]},
+        "accumulation_steps": 8
+    }
+}
 
-user_input:{input_text}
+GUIDELINES FOR TRAINING CONFIG:
+1. Resource Allocation:
+   - Adjust cpu_per_trial and gpus_per_trial based on model size and available resources
+   - Larger models require more resources
+
+2. Hyperparameter Ranges:
+   - Learning rate: Smaller for larger models
+   - Batch size: Smaller for larger models
+   - Dropout: Higher for complex tasks
+   - Accumulation steps: Higher for larger models or smaller batch sizes
+
+3. Training Duration:
+   - num_epochs: Typically 20-50 depending on dataset size
+   - num_samples: 20-50 for hyperparameter search
+
+Now, analyze the following task and provide model recommendation with training configuration:
+
+Task description: {input_text}
 '''
 
 Parse_user_input2 = '''
-You are an AI assistant specialized in parsing natural language inputs for bioinformatics AutoML tasks. Your task is to extract key information from user inputs, including but not limited to PDB IDs, amino acid sequences, UniProt IDs, and uploaded file information. Please analyze the input carefully and extract information according to the following steps:
+You are an AI assistant specialized in extracting PDB IDs, protein sequences, and determining task type from user inputs. Return the information in JSON format.
 
-1. Identify the task type;
+INFORMATION TO EXTRACT:
+1. Task Type: 
+   - Classification: For tasks involving categorical prediction or discrete classes
+   - Regression: For tasks predicting continuous values
+2. PDB IDs: 4-character identifier (e.g., "1ABC")
+3. Amino acid sequences: Single letter codes (e.g., "MKVILF...")
 
-2. Look for PDB ID (if any);
+OUTPUT FORMAT:
+{
+    "task_type": str,     // "classification" or "regression"
+    "pdb_ids": list[str], // List of PDB IDs found in input
+    "sequences": list[str] // List of amino acid sequences found in input
+}
 
-3. Identify amino acid sequence (if any);
+EXAMPLES:
 
-4. Look for UniProt ID (if any);
+Input: "I want to classify protein stability with PDB ID 1ABC"
+Output:
+{
+    "task_type": "classification",
+    "pdb_ids": ["1ABC"],
+    "sequences": []
+}
 
-5. Confirm if there's any file upload information;
+Input: "Predict stability changes for sequence MKVILFMKGSEND"
+Output:
+{
+    "task_type": "regression",
+    "pdb_ids": [],
+    "sequences": ["MKVILFMKGSEND"]
+}
 
-6. Extract other relevant task settings or constraints.
+Input: "Classify structures 1ABC and 2XYZ based on binding affinity"
+Output:
+{
+    "task_type": "classification",
+    "pdb_ids": ["1ABC", "2XYZ"],
+    "sequences": []
+}
 
-Please refer to the following examples:
+Input: "Calculate binding energy for MLKKFGTC sequence with structure 3XYZ"
+Output:
+{
+    "task_type": "regression",
+    "pdb_ids": ["3XYZ"],
+    "sequences": ["MLKKFGTC"]
+}
 
-Input 1: I want to classify the protein structure with PDB ID 1ABC. I've uploaded a CSV file containing relevant data.
+TASK TYPE KEYWORDS:
+Classification tasks often contain words like:
+- classify
+- categorize
+- identify
+- discriminate
+- distinguish
+- group
+- binary
+- class
 
-Step 1: Task type is protein structure classification;
+Regression tasks often contain words like:
+- predict
+- calculate
+- estimate
+- measure
+- quantify
+- value
+- energy
+- score
+- changes
 
-Step 2: PDB ID is 1ABC;
+Now, please analyze the following user input and provide the response in the specified JSON format:
 
-Step 3: No amino acid sequence provided;
-
-Step 4: No UniProt ID provided;
-
-Step 5: User mentioned uploading a CSV file;
-
-Step 6: No other specific task settings or constraints.
-
-Extracted information:
-
-- Task type: Protein structure classification;
-
-- PDB ID: 1ABC;
-
-- Uploaded file: CSV file.
-
-Now, please analyze the following user input in the same manner:
-
-User input: 
+User input: {input_text}
 '''
