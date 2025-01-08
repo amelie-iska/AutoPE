@@ -16,6 +16,7 @@ AutoPE uniquely integrates:
 # Clone the repository
 git clone https://github.com/tsynbio/AutoPE.git
 cd AutoPE
+```
 
 ## Key Dependencies
 
